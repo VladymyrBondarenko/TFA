@@ -1,34 +1,18 @@
 using Microsoft.EntityFrameworkCore;
-using Serilog;
-using Serilog.Filters;
 using TFA.Server.Helpers;
 using TFA.Server.Middlewares;
 using TFA.Domain.DependencyInjection;
 using TFA.Storage.DependencyInjection;
-using TFA.Server.MappingProfiles;
 using AutoMapper;
+using System.Reflection;
+using TFA.Server.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddLogging(x => x.AddSerilog(new LoggerConfiguration()
-    // level
-    .MinimumLevel.Debug()
-    // properties
-    .Enrich.WithProperty("Application", "TFA")
-    .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
-    // for open search
-    .WriteTo.Logger(lc => 
-        lc.Filter.ByExcluding(Matching.FromSource("Microsoft"))
-        .WriteTo.OpenSearch(builder.Configuration.GetConnectionString("Logs"), "forum-logs-{0:yyyy.MM.dd}"))
-    // for console
-    .WriteTo.Logger(lc => 
-        lc.WriteTo.Console())
-    .CreateLogger()
-    ));
+builder.Services.AddApiLogging(builder.Configuration, builder.Environment);
 
 // Add services to the container.
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -36,10 +20,7 @@ builder.Services
     .AddForumDomain()
     .AddForumStorage(builder.Configuration.GetConnectionString("ForumDbConnection"));
 
-builder.Services.AddAutoMapper(config =>
-{
-    config.AddProfile<DomainToResponseProfile>();
-});
+builder.Services.AddAutoMapper(config => config.AddMaps(Assembly.GetExecutingAssembly()));
 
 var app = builder.Build();
 
